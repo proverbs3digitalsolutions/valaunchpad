@@ -57,6 +57,7 @@ Database: Postgres with row-level security on every table that has `org_id`. Mon
 ## Rules to test
 
 - A learner cannot select another org's rows in any table.
+- `export_my_data()` returns only the caller's own profile, companies, consents, and requests, never the audit log.
 - An enrollment cannot exist without a `paid` payment row.
 - The 11th coach conversation for an enrollment is rejected at the database level.
 - A duplicate webhook event produces no second enrollment or payment update.

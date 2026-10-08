@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // Same rule as the foundations suite: skipped without TEST_ADMIN_DATABASE_URL, and a throwaway
 // database is created and dropped for each run.
 const adminUrl = process.env.TEST_ADMIN_DATABASE_URL;
-const migrations = ['0001_foundations.sql', '0002_consent_audit_requests.sql'].map((f) =>
+const migrations = ['0001_foundations.sql', '0002_consent_audit_requests.sql', '0003_data_export.sql'].map((f) =>
   readFileSync(new URL(`../db/migrations/${f}`, import.meta.url), 'utf8'),
 );
 
@@ -207,6 +207,53 @@ describeWithDb('row-level security: consent, data requests, audit log', () => {
       await expect(
         asUser(alice, (c) => c.query("insert into data_requests (user_id, kind) values ($1, 'export')", [bob])),
       ).rejects.toThrow(/row-level security|permission denied/);
+    });
+  });
+
+  describe('data export', () => {
+    it('returns the caller\'s own profile, consents, companies, and requests', async () => {
+      const res = await asUser(alice, (c) => c.query('select export_my_data() as data'));
+      const data = res.rows[0].data;
+      expect(data.profile.email).toBe('alice@example.com');
+      expect(data.consents.map((c: { kind: string }) => c.kind)).toContain('privacy');
+      expect(data.data_requests.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('never includes another person\'s data', async () => {
+      const res = await asUser(alice, (c) => c.query('select export_my_data() as data'));
+      const data = res.rows[0].data;
+      const text = JSON.stringify(data);
+      expect(text).not.toContain('bob@example.com');
+      expect(text).not.toContain('admin@example.com');
+      // Consent and request rows carry no email, so compare counts with what belongs to alice.
+      const mine = await db.query(
+        `select (select count(*)::int from consents where user_id = $1) as consents,
+                (select count(*)::int from data_requests where user_id = $1) as requests`,
+        [alice],
+      );
+      expect(data.consents.length).toBe(mine.rows[0].consents);
+      expect(data.data_requests.length).toBe(mine.rows[0].requests);
+    });
+
+    it('never includes the admin audit log', async () => {
+      const res = await asUser(alice, (c) => c.query('select export_my_data() as data'));
+      expect(Object.keys(res.rows[0].data).sort()).toEqual(
+        ['companies', 'consents', 'data_requests', 'exported_at', 'profile'],
+      );
+    });
+
+    it('refuses anonymous callers', async () => {
+      await expect(asUser(null, (c) => c.query('select export_my_data()'))).rejects.toThrow(/not authenticated/);
+    });
+
+    it('is not callable by anon', async () => {
+      await db.query('begin');
+      try {
+        await db.query('set local role anon');
+        await expect(db.query('select export_my_data()')).rejects.toThrow(/permission denied/);
+      } finally {
+        await db.query('rollback');
+      }
     });
   });
 
