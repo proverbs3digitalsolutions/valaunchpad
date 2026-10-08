@@ -9,8 +9,9 @@ Database: Postgres with row-level security on every table that has `org_id`. Mon
 | `organizations` | id, name, created_at | One per agency or solo learner. |
 | `users` | id (auth user id), email, name, language (`tl` or `en`) | Email is unique. |
 | `memberships` | org_id, user_id, role (`owner`, `learner`) | Unique on (org_id, user_id). A solo buyer has one row as owner and one as learner. |
-| `consents` | user_id, kind (`privacy`, `terms`), version, accepted_at | Written at signup. |
-| `data_requests` | user_id, kind (`export`, `delete`), status, requested_at, completed_at | Handles RA 10173 requests. |
+| `consent_versions` | kind (`privacy`, `terms`), version, published_at | Only published versions can be accepted. Written by the server after counsel approves the text. |
+| `consents` | user_id, kind, version (foreign key to `consent_versions`), accepted_at | Append-only history. Users can insert their own rows with `accepted_at` set by the database. Deleted with the profile (see open decision on retention). |
+| `data_requests` | user_id, kind (`export`, `delete`), status (`requested`, `completed`, `rejected`), requested_at, completed_at | Users create and read their own. Only the server changes status. Completion cannot precede the request. |
 
 ## Learning
 
@@ -51,7 +52,7 @@ Database: Postgres with row-level security on every table that has `org_id`. Mon
 
 | Table | Key columns | Notes |
 | --- | --- | --- |
-| `audit_log` | id, actor_id, action, target_type, target_id, at, details | Written for every admin action. Append-only. |
+| `audit_log` | id, actor_id (no foreign key), action, target_type, target_id, at, details | Written for every admin action. Append-only: updates, deletes, and TRUNCATE are refused for every role. No client role can read it. `actor_id` has no foreign key, so erasing an admin's profile keeps the record. The app must connect as a role that does not own the table, because the table owner can disable triggers.
 
 ## Rules to test
 
