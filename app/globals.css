@@ -1,0 +1,63 @@
+:root {
+  --mimosa: #fffbef;
+  --sunny: #ffb000;
+  --sunny-soft: #ffe39a;
+  --sunny-deep: #8a5a00;
+  --on-sunny: #2a1e00;
+  --ink: #2a2110;
+  --ink-muted: #6b5a33;
+  --surface-solid: #ffffff;
+  --glass: rgba(255, 255, 255, 0.62);
+  --glass-border: rgba(255, 255, 255, 0.85);
+  --line: #a8832a;
+  --radius-lg: 24px;
+  --shadow-glass: 0 8px 32px rgba(138, 90, 0, 0.12);
+  --glass-blur: 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --mimosa: #1a1508;
+    --sunny-soft: #4a3600;
+    --sunny-deep: #ffc94d;
+    --ink: #fff6dc;
+    --ink-muted: #c9b98f;
+    --surface-solid: #241d0d;
+    --glass: rgba(255, 246, 220, 0.08);
+    --glass-border: rgba(255, 246, 220, 0.18);
+    --line: #8f7a45;
+    --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.4);
+  }
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--mimosa);
+  color: var(--ink);
+  font-family: system-ui, sans-serif;
+}
+
+main {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-glass);
+  padding: 24px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
